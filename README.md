@@ -33,7 +33,26 @@ When you're running a startup with Firebase, Supabase, LLM APIs, and mobile apps
 5. Toggle entries on/off, tweak amounts to match your actual bills
 6. The summary cards and charts update live
 
-## Adding a Service to the Catalog
+## Contributing
+
+Contributions are welcome — bug reports, new catalog entries, UI improvements, anything.
+
+### Raising an Issue
+
+1. Go to [github.com/theyashdedhia/runcost/issues](https://github.com/theyashdedhia/runcost/issues)
+2. Click **New issue**
+3. Describe what's wrong or what you'd like added — include steps to reproduce for bugs, and pricing source URLs for new services
+
+### Opening a Pull Request
+
+1. Fork the repo
+2. Create a branch: `git checkout -b my-feature`
+3. Make your changes
+4. Open a PR against `main` with a short description of what changed and why
+
+No build step, no test suite to run — just edit the files and open the PR.
+
+### Adding a Service to the Catalog
 
 Edit `js/catalog.js` and add an entry to the `CATALOG` array:
 
@@ -41,7 +60,7 @@ Edit `js/catalog.js` and add an entry to the `CATALOG` array:
 {
   key: 'my_service',          // unique snake_case key
   name: 'My Service Pro',     // display name
-  category: 'backend',        // hosting | backend | ai | mobile | devtools | network | other
+  category: 'backend',        // hosting | backend | infrastructure | ai | mobile | devtools | network | other
   billingType: 'fixed_monthly',
   baseAmount: 29,             // monthly cost in USD
   perUserAmount: 0,           // for billingType: per_user
@@ -55,7 +74,7 @@ Edit `js/catalog.js` and add an entry to the `CATALOG` array:
 }
 ```
 
-Then open a PR — contributions welcome!
+Include the pricing source URL in your PR description so it can be verified.
 
 ## Billing Type Reference
 

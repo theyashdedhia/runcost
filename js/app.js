@@ -47,15 +47,6 @@ function bindEvents() {
     renderAll();
   });
 
-  document.getElementById('load-demo-btn').addEventListener('click', () => {
-    if (!confirm('Load the Firebase + Supabase + Hetzner demo stack into a new project?')) return;
-    const demo = loadSampleStack();
-    setActiveId(demo.id);
-    state.project = demo;
-    renderProjectSelect(loadProjects(), demo.id);
-    renderAll();
-  });
-
   document.getElementById('delete-project-btn').addEventListener('click', () => {
     const projects = loadProjects();
     if (projects.length <= 1) {
