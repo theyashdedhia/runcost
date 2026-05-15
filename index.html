@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RunCost — Per-User Cost Calculator</title>
+  <meta name="description" content="Open source tool to calculate the cost to run your app, including per-user monthly cost, fixed costs, and infrastructure breakdown.">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<!-- ── Header ────────────────────────────────────────────────── -->
+<header class="header">
+  <div style="display:flex;flex-direction:column;line-height:1.1;flex-shrink:0">
+    <span class="logo">RunCost</span>
+    <span class="logo-sub">per-user cost calculator</span>
+  </div>
+
+  <div class="header-project" style="margin-left:1rem">
+    <select id="project-select" title="Switch project"></select>
+    <input id="project-name-input" class="project-name-input" type="text" placeholder="Project name" title="Rename project">
+    <button class="btn btn-ghost" id="new-project-btn" title="New project">+ New</button>
+    <button class="btn btn-danger" id="delete-project-btn" title="Delete project">✕</button>
+  </div>
+
+  <div class="header-center">
+    <div class="header-metric">
+      <label for="mau-input">Monthly Active Users</label>
+      <input id="mau-input" type="number" min="0" value="1000" title="Monthly Active Users">
+    </div>
+    <div class="header-metric">
+      <label for="devs-input">Developers</label>
+      <input id="devs-input" type="number" min="1" value="3" title="Number of developers (for per-seat costs)">
+    </div>
+  </div>
+
+  <div class="header-right">
+    <button class="btn btn-ghost" id="load-demo-btn" title="Load Firebase + Supabase + Hetzner demo stack">🚀 Load Demo</button>
+    <button class="btn btn-ghost" id="open-catalog-btn" title="Browse all service presets">📦 Catalog</button>
+    <button class="btn btn-ghost" id="import-btn" title="Import project from JSON">⬆ Import</button>
+    <button class="btn btn-ghost" id="export-json-btn" title="Export project as JSON">⬇ JSON</button>
+    <button class="btn btn-ghost" id="export-csv-btn" title="Export cost table as CSV">⬇ CSV</button>
+    <input type="file" id="import-input" accept=".json" hidden>
+  </div>
+</header>
+
+<!-- ── Main ──────────────────────────────────────────────────── -->
+<main class="main">
+
+  <!-- Summary cards -->
+  <section class="summary-cards">
+    <div class="card card-total">
+      <div class="card-label">Total Monthly</div>
+      <div class="card-value" id="card-total">$0.00</div>
+    </div>
+    <div class="card card-peruser">
+      <div class="card-label">Per User / Month</div>
+      <div class="card-value" id="card-per-user">$0.000</div>
+    </div>
+    <div class="card card-annual">
+      <div class="card-label">Total Annual</div>
+      <div class="card-value" id="card-annual">$0.00</div>
+    </div>
+    <div class="card card-annualpu">
+      <div class="card-label">Per User / Year</div>
+      <div class="card-value" id="card-annual-pu">$0.000</div>
+    </div>
+    <div class="card card-fixed">
+      <div class="card-label">Fixed Costs</div>
+      <div class="card-value" id="card-fixed">$0.00</div>
+    </div>
+    <div class="card card-var">
+      <div class="card-label">Variable Costs</div>
+      <div class="card-value" id="card-variable">$0.00</div>
+    </div>
+  </section>
+
+  <!-- Charts -->
+  <section class="charts-row">
+    <div class="chart-card">
+      <h3>Cost by Category</h3>
+      <div class="chart-wrap">
+        <canvas id="chart-donut"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3>Fixed vs Variable by Category</h3>
+      <div class="chart-wrap">
+        <canvas id="chart-bar"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3>Cost at Scale</h3>
+      <div class="chart-wrap">
+        <canvas id="chart-scale"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- Scale projector -->
+  <details class="scale-section" open>
+    <summary>Scale Projector</summary>
+    <div class="scale-body">
+      <div class="scale-controls">
+        <label>
+          Simulate
+          <input id="scale-users" type="number" min="0" value="10000">
+          users
+        </label>
+        <span style="font-size:0.8rem;color:var(--text3)">See how your costs change at a different user count.</span>
+      </div>
+      <div id="scale-results"></div>
+    </div>
+  </details>
+
+  <!-- Table -->
+  <section class="table-section">
+    <div class="table-controls">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input id="search-input" type="text" placeholder="Search costs…" autocomplete="off">
+      </div>
+
+      <div id="category-chips"></div>
+
+      <div class="filter-controls">
+        <select id="billing-filter" title="Filter by billing type">
+          <option value="">All billing types</option>
+          <option value="fixed_monthly">Fixed Monthly</option>
+          <option value="fixed_annual">Fixed Annual</option>
+          <option value="per_user">Per User</option>
+          <option value="usage_per_user">Usage per User</option>
+          <option value="one_time">One-Time</option>
+          <option value="per_seat">Per Seat</option>
+        </select>
+
+        <label class="checkbox-label">
+          <input type="checkbox" id="show-disabled">
+          Show disabled
+        </label>
+
+        <button class="btn btn-ghost" id="open-catalog-btn2" style="display:none">📦 Add from catalog</button>
+        <button class="btn btn-primary" id="add-cost-btn">+ Add Cost</button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th></th>
+            <th data-sort="name">Name</th>
+            <th data-sort="category">Category</th>
+            <th data-sort="billingType">Billing</th>
+            <th data-sort="monthly" style="text-align:right">Monthly Cost</th>
+            <th style="text-align:right">Per User</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="cost-tbody">
+          <tr><td colspan="7" class="empty-row">Loading…</td></tr>
+        </tbody>
+        <tfoot>
+          <tr id="table-total-row">
+            <td colspan="7"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<!-- ── Add / Edit Modal ───────────────────────────────────────── -->
+<div id="modal" class="modal" role="dialog" aria-modal="true">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2 id="modal-title">Add Cost</h2>
+      <button class="modal-close" id="modal-cancel" aria-label="Close">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <!-- Catalog preset loader -->
+      <div class="form-group">
+        <label for="modal-service-select">Load from Catalog (optional)</label>
+        <select id="modal-service-select">
+          <option value="">— Select a service to pre-fill —</option>
+          <optgroup label="Hosting">
+            <option value="firebase_hosting_free">Firebase Hosting (Spark Free)</option>
+            <option value="firebase_hosting_blaze">Firebase Hosting — Bandwidth (Blaze)</option>
+            <option value="vercel_free">Vercel Free</option>
+            <option value="vercel_pro">Vercel Pro</option>
+            <option value="vercel_team">Vercel Team</option>
+            <option value="netlify_free">Netlify Free</option>
+            <option value="netlify_pro">Netlify Pro</option>
+            <option value="netlify_business">Netlify Business</option>
+            <option value="cloudflare_pages_free">Cloudflare Pages Free</option>
+            <option value="cloudflare_pro">Cloudflare Pro</option>
+            <option value="aws_s3_cloudfront">AWS S3 + CloudFront</option>
+            <option value="render_free">Render Static Sites (Free)</option>
+            <option value="render_individual">Render Web Service (Individual)</option>
+          </optgroup>
+          <optgroup label="Backend">
+            <option value="supabase_free">Supabase Free</option>
+            <option value="supabase_pro">Supabase Pro</option>
+            <option value="supabase_team">Supabase Team</option>
+            <option value="firebase_firestore">Firebase Firestore — Reads</option>
+            <option value="firebase_firestore_writes">Firebase Firestore — Writes</option>
+            <option value="firebase_auth">Firebase Auth (phone/SMS)</option>
+            <option value="firebase_functions">Firebase Cloud Functions</option>
+            <option value="planetscale_scaler">PlanetScale Scaler</option>
+            <option value="neon_launch">Neon Launch</option>
+            <option value="neon_scale">Neon Scale</option>
+            <option value="railway_hobby">Railway Hobby</option>
+            <option value="railway_pro">Railway Pro</option>
+          </optgroup>
+          <optgroup label="AI / LLM">
+            <option value="openai_gpt4o">OpenAI GPT-4o</option>
+            <option value="openai_gpt4o_mini">OpenAI GPT-4o mini</option>
+            <option value="openai_gpt4_turbo">OpenAI GPT-4 Turbo</option>
+            <option value="openai_gpt35_turbo">OpenAI GPT-3.5 Turbo</option>
+            <option value="openai_o1">OpenAI o1</option>
+            <option value="anthropic_claude_opus">Anthropic Claude Opus 4</option>
+            <option value="anthropic_claude_sonnet">Anthropic Claude Sonnet 4.6</option>
+            <option value="anthropic_claude_haiku">Anthropic Claude Haiku 4.5</option>
+            <option value="gemini_15_pro">Google Gemini 1.5 Pro</option>
+            <option value="gemini_15_flash">Google Gemini 1.5 Flash</option>
+            <option value="gemini_20_flash">Google Gemini 2.0 Flash</option>
+            <option value="mistral_large">Mistral Large</option>
+            <option value="mistral_small">Mistral Small</option>
+            <option value="mistral_codestral">Mistral Codestral</option>
+            <option value="groq_llama3_70b">Groq Llama 3.1 70B</option>
+            <option value="groq_llama3_8b">Groq Llama 3.1 8B</option>
+            <option value="cohere_command_r_plus">Cohere Command R+</option>
+            <option value="cohere_command_r">Cohere Command R</option>
+            <option value="xai_grok">xAI Grok</option>
+            <option value="perplexity_sonar">Perplexity Sonar Pro</option>
+          </optgroup>
+          <optgroup label="Mobile">
+            <option value="apple_app_store">Apple App Store (Developer)</option>
+            <option value="google_play_store">Google Play Store (Developer)</option>
+            <option value="revenuecat_starter">RevenueCat Starter</option>
+            <option value="expo_eas">Expo EAS Build</option>
+          </optgroup>
+          <optgroup label="Dev Tools">
+            <option value="claude_code">Claude Code</option>
+            <option value="cursor">Cursor</option>
+            <option value="github_copilot_individual">GitHub Copilot Individual</option>
+            <option value="github_copilot_business">GitHub Copilot Business</option>
+            <option value="jetbrains_ai">JetBrains AI Assistant</option>
+            <option value="linear">Linear</option>
+            <option value="figma_professional">Figma Professional</option>
+            <option value="notion_teams">Notion Teams</option>
+            <option value="slack_pro">Slack Pro</option>
+            <option value="github_teams">GitHub Teams</option>
+            <option value="datadog_pro">Datadog Pro</option>
+            <option value="sentry_team">Sentry Team</option>
+            <option value="postman_basic">Postman Basic</option>
+          </optgroup>
+          <optgroup label="Infrastructure">
+            <option value="hetzner_cx22">Hetzner CX22 (2 vCPU / 4 GB)</option>
+            <option value="hetzner_cx32">Hetzner CX32 (4 vCPU / 8 GB)</option>
+            <option value="hetzner_cx42">Hetzner CX42 (8 vCPU / 16 GB)</option>
+            <option value="hetzner_cx52">Hetzner CX52 (16 vCPU / 32 GB)</option>
+            <option value="hetzner_cpx21">Hetzner CPX21 (3 vCPU dedicated / 4 GB)</option>
+            <option value="hetzner_cpx31">Hetzner CPX31 (4 vCPU dedicated / 8 GB)</option>
+            <option value="hetzner_ccx13">Hetzner CCX13 (2 vCPU dedicated Intel / 8 GB)</option>
+            <option value="hetzner_load_balancer">Hetzner Load Balancer LB11</option>
+            <option value="hetzner_volume">Hetzner Block Storage Volume</option>
+            <option value="hetzner_object_storage">Hetzner Object Storage</option>
+            <option value="hetzner_traffic">Hetzner Outbound Traffic (overage)</option>
+            <option value="digitalocean_basic">DigitalOcean Droplet (Basic 2 GB)</option>
+            <option value="fly_io">Fly.io (shared-cpu-2x, 512MB)</option>
+          </optgroup>
+          <optgroup label="Network">
+            <option value="cdn_bandwidth_generic">CDN Bandwidth (generic)</option>
+            <option value="firebase_storage_bandwidth">Firebase Storage Download</option>
+            <option value="supabase_storage_bandwidth">Supabase Storage Bandwidth</option>
+            <option value="aws_data_transfer">AWS Data Transfer Out</option>
+            <option value="twilio_sms">Twilio SMS</option>
+            <option value="sendgrid_essentials">SendGrid Essentials</option>
+            <option value="resend">Resend</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <form id="cost-form" novalidate>
+        <div class="form-group">
+          <label for="field-name">Name *</label>
+          <input id="field-name" type="text" placeholder="e.g. Supabase Pro" required>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="field-category">Category</label>
+            <select id="field-category">
+              <option value="hosting">Hosting</option>
+              <option value="backend">Backend</option>
+              <option value="infrastructure">Infrastructure</option>
+              <option value="ai">AI / LLM</option>
+              <option value="mobile">Mobile</option>
+              <option value="devtools">Dev Tools</option>
+              <option value="network">Network</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="field-billing-type">Billing Type</label>
+            <select id="field-billing-type">
+              <option value="fixed_monthly">Fixed Monthly</option>
+              <option value="fixed_annual">Fixed Annual (amortized)</option>
+              <option value="per_user">Per User / MAU</option>
+              <option value="usage_per_user">Usage per User</option>
+              <option value="one_time">One-Time (amortized)</option>
+              <option value="per_seat">Per Dev Seat</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Dynamic fields — shown/hidden by updateBillingFields() -->
+        <div id="field-base-amount-row" class="form-group" style="display:grid">
+          <label>Base Monthly Cost ($)</label>
+          <input id="field-base-amount" type="number" min="0" step="0.01" value="0">
+        </div>
+
+        <div id="field-per-user-row" class="form-group" style="display:none">
+          <label>Cost per MAU ($/user/month)</label>
+          <input id="field-per-user" type="number" min="0" step="0.0001" value="0">
+        </div>
+
+        <div id="field-usage-pu-row" class="form-group" style="display:none">
+          <label>Usage per User per Month</label>
+          <input id="field-usage-pu" type="number" min="0" step="any" value="0">
+        </div>
+
+        <div id="field-unit-cost-row" class="form-group" style="display:none">
+          <label>Cost per Unit ($)</label>
+          <input id="field-unit-cost" type="number" min="0" step="any" value="0">
+          <p class="form-hint">Monthly cost = usage/user × cost/unit × MAU</p>
+        </div>
+
+        <div id="field-unit-label-row" class="form-group" style="display:none">
+          <label>Unit Label</label>
+          <input id="field-unit-label" type="text" placeholder="e.g. tokens/month per user">
+        </div>
+
+        <div id="field-seats-row" class="form-group" style="display:none">
+          <label>Number of Seats</label>
+          <input id="field-seats" type="number" min="1" step="1" value="3">
+          <p class="form-hint">Defaults to your developer count. Monthly = base × seats.</p>
+        </div>
+
+        <div id="field-amortize-row" class="form-group" style="display:none">
+          <label>Amortize Over (months)</label>
+          <input id="field-amortize" type="number" min="1" step="1" value="12">
+        </div>
+
+        <div class="form-group">
+          <label for="field-notes">Notes</label>
+          <textarea id="field-notes" placeholder="Optional notes or description"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input id="field-enabled" type="checkbox" checked>
+            Enabled (include in totals)
+          </label>
+        </div>
+      </form>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="modal-cancel-footer">Cancel</button>
+      <button class="btn btn-primary" type="submit" form="cost-form">Save Cost</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Catalog Modal ──────────────────────────────────────────── -->
+<div id="catalog-modal" class="modal" role="dialog" aria-modal="true">
+  <div class="modal-box catalog-modal-box">
+    <div class="modal-header">
+      <h2>Service Catalog</h2>
+      <button class="modal-close" id="catalog-close" aria-label="Close">✕</button>
+    </div>
+    <div class="catalog-search-wrap">
+      <input id="catalog-search" type="text" placeholder="Search by name, category, or description…" autocomplete="off">
+    </div>
+    <div id="catalog-list" class="catalog-list"></div>
+  </div>
+</div>
+
+<!-- ── Scripts ───────────────────────────────────────────────── -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="js/catalog.js"></script>
+<script src="js/calculator.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/app.js"></script>
+
+<!-- Wire up second "Add from catalog" button and footer cancel -->
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('modal-cancel-footer').addEventListener('click', closeModal);
+    document.getElementById('open-catalog-btn2') &&
+      document.getElementById('open-catalog-btn2').addEventListener('click', openCatalogModal);
+  });
+</script>
+
+</body>
+</html>
