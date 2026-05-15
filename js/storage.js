@@ -1,8 +1,5 @@
 'use strict';
 
-const STORAGE_KEY = 'runcost_projects';
-const ACTIVE_KEY  = 'runcost_active';
-
 function uuid() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
     const r = Math.random() * 16 | 0;
@@ -12,16 +9,18 @@ function uuid() {
 
 function now() { return new Date().toISOString(); }
 
+// ── In-memory store ──────────────────────────────────────────
+let _projects = [];
+let _activeId = null;
+
 // ── Project CRUD ─────────────────────────────────────────────
 
 function loadProjects() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-  } catch { return []; }
+  return _projects.slice();
 }
 
 function saveProjects(projects) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+  _projects = projects.slice();
 }
 
 function createProject(name = 'My App') {
@@ -35,35 +34,32 @@ function createProject(name = 'My App') {
     createdAt: now(),
     updatedAt: now(),
   };
-  const projects = loadProjects();
-  projects.push(p);
-  saveProjects(projects);
+  _projects.push(p);
   return p;
 }
 
 function getProject(id) {
-  return loadProjects().find(p => p.id === id) || null;
+  return _projects.find(p => p.id === id) || null;
 }
 
 function updateProject(updated) {
-  const projects = loadProjects().map(p =>
+  _projects = _projects.map(p =>
     p.id === updated.id ? { ...updated, updatedAt: now() } : p
   );
-  saveProjects(projects);
 }
 
 function deleteProject(id) {
-  saveProjects(loadProjects().filter(p => p.id !== id));
+  _projects = _projects.filter(p => p.id !== id);
 }
 
 // ── Active project tracking ──────────────────────────────────
 
 function getActiveId() {
-  return localStorage.getItem(ACTIVE_KEY) || null;
+  return _activeId;
 }
 
 function setActiveId(id) {
-  localStorage.setItem(ACTIVE_KEY, id);
+  _activeId = id;
 }
 
 // ── Cost entry CRUD (operates on a project) ──────────────────
@@ -148,11 +144,8 @@ function importJSON(file) {
           reject(new Error('Invalid project file — missing name or costs array.'));
           return;
         }
-        // Assign a fresh id so we don't overwrite existing
         const imported = { ...data, id: uuid(), updatedAt: now() };
-        const projects = loadProjects();
-        projects.push(imported);
-        saveProjects(projects);
+        _projects.push(imported);
         resolve(imported);
       } catch (err) {
         reject(new Error('Could not parse JSON: ' + err.message));
@@ -161,20 +154,4 @@ function importJSON(file) {
     reader.onerror = () => reject(new Error('Failed to read file.'));
     reader.readAsText(file);
   });
-}
-
-// Create a new project pre-populated with the demo stack from catalog.js
-function loadSampleStack() {
-  const p = {
-    ...SAMPLE_STACK,
-    id: uuid(),
-    createdAt: now(),
-    updatedAt: now(),
-    // Give each cost a fresh uuid so they don't clash with existing entries
-    costs: SAMPLE_STACK.costs.map(c => ({ ...c, id: uuid() })),
-  };
-  const projects = loadProjects();
-  projects.push(p);
-  saveProjects(projects);
-  return p;
 }
