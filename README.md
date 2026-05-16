@@ -22,7 +22,7 @@ When you're running a startup with Firebase, Supabase, LLM APIs, and mobile apps
 - **Multi-project** — compare costs for different apps side by side
 - **Export** — JSON (full project), CSV (for spreadsheets), Print/PDF
 - **Import** — load a project JSON file
-- **100% local** — data lives in your browser's localStorage, nothing sent anywhere
+- **100% local** — data lives only in your browser tab; nothing is sent anywhere. Export to JSON to save your work between sessions.
 
 ## Usage
 
@@ -91,7 +91,7 @@ Include the pricing source URL in your PR description so it can be verified.
 
 - Pure HTML/CSS/JS — zero framework, zero build step
 - [Chart.js](https://www.chartjs.org/) for charts (CDN)
-- `localStorage` for data persistence
+- In-memory only — export to JSON to save your work between sessions
 - Works offline
 
 ## License

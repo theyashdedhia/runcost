@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>RunCost — Per-User Cost Calculator</title>
   <meta name="description" content="Open source tool to calculate the cost to run your app, including per-user monthly cost, fixed costs, and infrastructure breakdown.">
+  <meta property="og:title" content="RunCost — Per-User Cost Calculator">
+  <meta property="og:description" content="Open source tool to calculate exactly how much each user costs your app per month.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://theyashdedhia.github.io/runcost/">
+  <meta name="twitter:card" content="summary">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -42,6 +47,11 @@
     <input type="file" id="import-input" accept=".json" hidden>
   </div>
 </header>
+
+<!-- ── Session notice ─────────────────────────────────────────── -->
+<div class="session-notice" role="note">
+  Your work isn't saved between sessions — use <strong>⬇ JSON</strong> to download a copy.
+</div>
 
 <!-- ── Main ──────────────────────────────────────────────────── -->
 <main class="main">

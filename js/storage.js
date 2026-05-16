@@ -134,17 +134,54 @@ function exportCSV(project, calcResult) {
   URL.revokeObjectURL(url);
 }
 
+function sanitizeNumber(v) {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+function sanitizeCost(c) {
+  const billingKeys = (typeof BILLING_TYPES !== 'undefined' ? BILLING_TYPES : [])
+    .map(b => b.key);
+  const categoryKeys = (typeof CATEGORIES !== 'undefined' ? CATEGORIES : [])
+    .map(cat => cat.key);
+  return {
+    id: uuid(),
+    name: String(c && c.name ? c.name : 'Unnamed cost').slice(0, 200),
+    serviceKey: c && c.serviceKey ? String(c.serviceKey) : null,
+    category: c && categoryKeys.includes(c.category) ? c.category : 'other',
+    billingType: c && billingKeys.includes(c.billingType) ? c.billingType : 'fixed_monthly',
+    baseAmount: sanitizeNumber(c && c.baseAmount),
+    perUserAmount: sanitizeNumber(c && c.perUserAmount),
+    usagePerUser: sanitizeNumber(c && c.usagePerUser),
+    unitCost: sanitizeNumber(c && c.unitCost),
+    unitLabel: c && c.unitLabel ? String(c.unitLabel).slice(0, 100) : '',
+    seats: sanitizeNumber(c && c.seats),
+    amortizeMonths: Math.max(1, sanitizeNumber(c && c.amortizeMonths) || 12),
+    notes: c && c.notes ? String(c.notes).slice(0, 1000) : '',
+    enabled: c && c.enabled !== false,
+  };
+}
+
 function importJSON(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = e => {
       try {
         const data = JSON.parse(e.target.result);
-        if (!data.name || !Array.isArray(data.costs)) {
+        if (!data || typeof data !== 'object' || !data.name || !Array.isArray(data.costs)) {
           reject(new Error('Invalid project file — missing name or costs array.'));
           return;
         }
-        const imported = { ...data, id: uuid(), updatedAt: now() };
+        const imported = {
+          id: uuid(),
+          name: String(data.name).slice(0, 200),
+          currency: 'USD',
+          monthlyActiveUsers: Math.max(0, sanitizeNumber(data.monthlyActiveUsers)),
+          developers: Math.max(1, sanitizeNumber(data.developers) || 1),
+          costs: data.costs.filter(c => c && typeof c === 'object').map(sanitizeCost),
+          createdAt: data.createdAt || now(),
+          updatedAt: now(),
+        };
         _projects.push(imported);
         resolve(imported);
       } catch (err) {
