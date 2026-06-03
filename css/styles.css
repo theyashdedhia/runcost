@@ -478,6 +478,8 @@ td {
 .td-toggle { width: 48px; }
 .td-name { min-width: 180px; }
 .td-billing { min-width: 140px; }
+.td-owner { min-width: 110px; font-size: 0.85rem; color: var(--text2); }
+.owner-empty { color: var(--text3); }
 .td-amount  { min-width: 120px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; }
 .td-actions { width: 80px; text-align: right; white-space: nowrap; }
 
@@ -643,63 +645,6 @@ tfoot td { padding: 0.75rem 1rem; font-weight: 600; }
   border-top: 1px solid var(--border);
 }
 
-/* ── Catalog modal ───────────────────────────────────────────── */
-.catalog-modal-box {
-  max-width: 680px;
-  max-height: 85vh;
-  display: flex;
-  flex-direction: column;
-}
-.catalog-search-wrap {
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--border);
-}
-.catalog-search-wrap input {
-  width: 100%;
-  background: var(--bg3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text);
-  font-family: inherit;
-  font-size: 0.9rem;
-  padding: 0.5rem 0.75rem;
-  outline: none;
-}
-.catalog-search-wrap input:focus { border-color: var(--accent); }
-
-.catalog-list {
-  overflow-y: auto;
-  flex: 1;
-  padding: 0.5rem 0;
-}
-.catalog-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.7rem 1.5rem;
-  border-bottom: 1px solid var(--border);
-  gap: 1rem;
-  transition: background 0.1s;
-}
-.catalog-item:hover { background: var(--bg3); }
-.catalog-item:last-child { border-bottom: none; }
-.catalog-item-info { flex: 1; min-width: 0; display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
-.catalog-item-name { font-weight: 500; font-size: 0.9rem; }
-.catalog-item-desc { font-size: 0.75rem; color: var(--text3); width: 100%; }
-
-.btn-add-catalog {
-  background: var(--bg4);
-  color: var(--accent);
-  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
-  border-radius: var(--radius-sm);
-  padding: 0.3rem 0.8rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  white-space: nowrap;
-}
-.btn-add-catalog:hover { background: color-mix(in srgb, var(--accent) 15%, transparent); }
-.btn-add-catalog:disabled { opacity: 0.5; cursor: default; }
-
 /* ── Scrollbars ──────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -709,7 +654,7 @@ tfoot td { padding: 0.75rem 1rem; font-weight: 600; }
 /* ── Print ───────────────────────────────────────────────────── */
 @media print {
   .header, .table-controls, .td-actions, .td-toggle,
-  .btn, button, .modal, .catalog-modal { display: none !important; }
+  .btn, button, .modal { display: none !important; }
   body { background: white; color: black; }
   .card { border: 1px solid #ccc; }
   .main { max-width: 100%; }

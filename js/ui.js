@@ -90,7 +90,8 @@ function getFilteredEntries() {
     if (state.filters.billingType && c.billingType !== state.filters.billingType) return false;
     if (state.filters.search) {
       const q = state.filters.search.toLowerCase();
-      if (!c.name.toLowerCase().includes(q) && !c.category.includes(q)) return false;
+      const owner = (c.owner || '').toLowerCase();
+      if (!c.name.toLowerCase().includes(q) && !c.category.includes(q) && !owner.includes(q)) return false;
     }
     return true;
   });
@@ -124,7 +125,7 @@ function renderTable() {
 
   tbody.innerHTML = '';
   if (withMonthly.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" class="empty-row">No cost entries yet. Click <strong>+ Add Cost</strong> to get started.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="empty-row">No cost entries yet. Click <strong>+ Add Cost</strong> to get started.</td></tr>`;
     return;
   }
 
@@ -132,7 +133,7 @@ function renderTable() {
     const perUser = mau > 0 ? e.monthly / mau : 0;
     const pct = total > 0 ? (e.monthly / total * 100).toFixed(1) : '0';
     const catMeta = getCategoryMeta(e.category);
-    const billingMeta = BILLING_TYPES.find(b => b.key === e.billingType) || { label: e.billingType };
+    const billingMeta = getBillingMeta(e.billingType);
     const tr = document.createElement('tr');
     tr.className = e.enabled ? '' : 'row-disabled';
     tr.innerHTML = `
@@ -146,6 +147,7 @@ function renderTable() {
         <span class="cost-name">${esc(e.name)}</span>
         ${e.notes ? `<span class="cost-notes">${esc(e.notes)}</span>` : ''}
       </td>
+      <td class="td-owner">${e.owner ? esc(e.owner) : '<span class="owner-empty">—</span>'}</td>
       <td><span class="badge" style="--badge-color:${catMeta.color}">${catMeta.label}</span></td>
       <td class="td-billing"><span class="billing-label">${billingMeta.label}</span></td>
       <td class="td-amount">${fmtUSD(e.monthly)}</td>
@@ -165,7 +167,7 @@ function renderTable() {
   const tfootRow = document.getElementById('table-total-row');
   if (tfootRow) {
     tfootRow.innerHTML = `
-      <td colspan="4" class="tfoot-label">Enabled total (${withMonthly.filter(e=>e.enabled).length} items)</td>
+      <td colspan="5" class="tfoot-label">Enabled total (${withMonthly.filter(e=>e.enabled).length} items)</td>
       <td class="td-amount tfoot-total">${fmtUSD(total)}</td>
       <td class="td-amount tfoot-total">${fmtSmall(state.calcResult ? state.calcResult.perUser : 0)}</td>
       <td></td>
@@ -210,7 +212,6 @@ function openModal(existingEntry = null) {
   // Reset form
   const form = document.getElementById('cost-form');
   form.reset();
-  document.getElementById('modal-service-select').value = '';
 
   if (existingEntry) {
     fillFormFromEntry(existingEntry);
@@ -234,6 +235,7 @@ function closeModal() {
 
 function fillFormFromEntry(e) {
   document.getElementById('field-name').value          = e.name || '';
+  document.getElementById('field-owner').value         = e.owner || '';
   document.getElementById('field-category').value      = e.category || 'other';
   document.getElementById('field-billing-type').value  = e.billingType || 'fixed_monthly';
   document.getElementById('field-base-amount').value   = e.baseAmount || 0;
@@ -248,24 +250,12 @@ function fillFormFromEntry(e) {
   updateBillingFields();
 }
 
-function fillFormFromCatalogItem(item) {
-  document.getElementById('field-name').value          = item.name;
-  document.getElementById('field-category').value      = item.category;
-  document.getElementById('field-billing-type').value  = item.billingType;
-  document.getElementById('field-base-amount').value   = item.baseAmount || 0;
-  document.getElementById('field-per-user').value      = item.perUserAmount || 0;
-  document.getElementById('field-usage-pu').value      = item.usagePerUser || 0;
-  document.getElementById('field-unit-cost').value     = item.unitCost || 0;
-  document.getElementById('field-unit-label').value    = item.unitLabel || '';
-  document.getElementById('field-seats').value         = state.project.developers || 1;
-  document.getElementById('field-amortize').value      = item.amortizeMonths || 12;
-  document.getElementById('field-notes').value         = item.description || '';
-  document.getElementById('field-enabled').checked     = true;
-  updateBillingFields();
-}
-
 function updateBillingFields() {
   const bt = document.getElementById('field-billing-type').value;
+
+  // Cost-type hint
+  const hint = document.getElementById('billing-type-hint');
+  if (hint) hint.textContent = getBillingMeta(bt).desc || '';
 
   // hide all optional rows first
   ['field-base-amount', 'field-per-user', 'field-usage-pu', 'field-unit-cost',
@@ -307,7 +297,7 @@ function getFormEntry() {
   return {
     id: state.editingCostId || null,
     name:          document.getElementById('field-name').value.trim(),
-    serviceKey:    document.getElementById('modal-service-select').value || null,
+    owner:         document.getElementById('field-owner').value.trim(),
     category:      document.getElementById('field-category').value,
     billingType:   bt,
     baseAmount:    parseFloat(document.getElementById('field-base-amount').value) || 0,
@@ -320,43 +310,6 @@ function getFormEntry() {
     notes:         document.getElementById('field-notes').value.trim(),
     enabled:       document.getElementById('field-enabled').checked,
   };
-}
-
-// ── Catalog modal ─────────────────────────────────────────────
-function openCatalogModal() {
-  const modal = document.getElementById('catalog-modal');
-  modal.classList.add('visible');
-  renderCatalogItems('');
-  document.getElementById('catalog-search').value = '';
-  document.getElementById('catalog-search').focus();
-}
-
-function closeCatalogModal() {
-  document.getElementById('catalog-modal').classList.remove('visible');
-}
-
-function renderCatalogItems(query) {
-  const list = document.getElementById('catalog-list');
-  const q = query.toLowerCase();
-  const items = q
-    ? CATALOG.filter(c => c.name.toLowerCase().includes(q) || c.category.includes(q) || c.description.toLowerCase().includes(q))
-    : CATALOG;
-
-  list.innerHTML = '';
-  for (const item of items) {
-    const catMeta = getCategoryMeta(item.category);
-    const div = document.createElement('div');
-    div.className = 'catalog-item';
-    div.innerHTML = `
-      <div class="catalog-item-info">
-        <span class="catalog-item-name">${esc(item.name)}</span>
-        <span class="badge" style="--badge-color:${catMeta.color}">${catMeta.label}</span>
-        <span class="catalog-item-desc">${esc(item.description)}</span>
-      </div>
-      <button class="btn-add-catalog" data-key="${item.key}">+ Add</button>
-    `;
-    list.appendChild(div);
-  }
 }
 
 // ── Project management UI ─────────────────────────────────────

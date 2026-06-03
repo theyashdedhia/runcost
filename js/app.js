@@ -161,14 +161,6 @@ function bindEvents() {
   // ── Modal: billing type change → update fields ─────────────
   document.getElementById('field-billing-type').addEventListener('change', updateBillingFields);
 
-  // ── Modal: load from catalog dropdown ─────────────────────
-  document.getElementById('modal-service-select').addEventListener('change', e => {
-    const key = e.target.value;
-    if (!key) return;
-    const item = CATALOG_BY_KEY[key];
-    if (item) fillFormFromCatalogItem(item);
-  });
-
   // ── Modal: save ───────────────────────────────────────────
   document.getElementById('cost-form').addEventListener('submit', e => {
     e.preventDefault();
@@ -194,47 +186,6 @@ function bindEvents() {
     if (e.target.id === 'modal') closeModal();
   });
 
-  // ── Catalog modal ─────────────────────────────────────────
-  document.getElementById('open-catalog-btn').addEventListener('click', openCatalogModal);
-  document.getElementById('catalog-close').addEventListener('click', closeCatalogModal);
-  document.getElementById('catalog-modal').addEventListener('click', e => {
-    if (e.target.id === 'catalog-modal') closeCatalogModal();
-  });
-
-  document.getElementById('catalog-search').addEventListener('input', e => {
-    renderCatalogItems(e.target.value);
-  });
-
-  document.getElementById('catalog-list').addEventListener('click', e => {
-    const btn = e.target.closest('.btn-add-catalog');
-    if (!btn) return;
-    const item = CATALOG_BY_KEY[btn.dataset.key];
-    if (!item) return;
-    const entry = {
-      name: item.name,
-      serviceKey: item.key,
-      category: item.category,
-      billingType: item.billingType,
-      baseAmount: item.baseAmount || 0,
-      perUserAmount: item.perUserAmount || 0,
-      usagePerUser: item.usagePerUser || 0,
-      unitCost: item.unitCost || 0,
-      unitLabel: item.unitLabel || '',
-      seats: state.project.developers || 1,
-      amortizeMonths: item.amortizeMonths || 12,
-      notes: item.description || '',
-      enabled: true,
-    };
-    addCost(state.project, entry);
-    state.project = getProject(state.project.id);
-    renderAll();
-
-    // visual feedback
-    btn.textContent = '✓ Added';
-    btn.disabled = true;
-    setTimeout(() => { btn.textContent = '+ Add'; btn.disabled = false; }, 1500);
-  });
-
   // ── Scale projector ────────────────────────────────────────
   document.getElementById('scale-users').addEventListener('input', e => {
     renderScaleProjector(parseInt(e.target.value, 10) || 0);
@@ -244,7 +195,6 @@ function bindEvents() {
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
       closeModal();
-      closeCatalogModal();
     }
   });
 }

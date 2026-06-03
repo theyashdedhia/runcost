@@ -102,13 +102,14 @@ function exportJSON(project) {
 
 function exportCSV(project, calcResult) {
   const rows = [
-    ['Name', 'Category', 'Billing Type', 'Monthly Cost (USD)', 'Per-User Cost (USD)', '% of Total', 'Enabled', 'Notes'],
+    ['Name', 'Owner', 'Category', 'Cost Type', 'Monthly Cost (USD)', 'Per-User Cost (USD)', '% of Total', 'Enabled', 'Notes'],
   ];
   for (const e of calcResult.entries) {
     const perUser = calcResult.mau > 0 ? e.monthly / calcResult.mau : 0;
     const pct = calcResult.total > 0 ? (e.monthly / calcResult.total * 100).toFixed(1) : '0';
     rows.push([
       `"${e.name}"`,
+      `"${e.owner || ''}"`,
       e.category,
       e.billingType,
       e.monthly.toFixed(4),
@@ -119,10 +120,10 @@ function exportCSV(project, calcResult) {
     ]);
   }
   rows.push([]);
-  rows.push([`"Total Monthly"`, '', '', calcResult.total.toFixed(2)]);
-  rows.push([`"Per-User Monthly"`, '', '', calcResult.perUser.toFixed(6)]);
-  rows.push([`"Fixed Costs"`, '', '', calcResult.fixed.toFixed(2)]);
-  rows.push([`"Variable Costs"`, '', '', calcResult.variable.toFixed(2)]);
+  rows.push([`"Total Monthly"`, '', '', '', calcResult.total.toFixed(2)]);
+  rows.push([`"Per-User Monthly"`, '', '', '', calcResult.perUser.toFixed(6)]);
+  rows.push([`"Fixed Costs"`, '', '', '', calcResult.fixed.toFixed(2)]);
+  rows.push([`"Variable Costs"`, '', '', '', calcResult.variable.toFixed(2)]);
 
   const csv = rows.map(r => r.join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv' });
@@ -147,7 +148,7 @@ function sanitizeCost(c) {
   return {
     id: uuid(),
     name: String(c && c.name ? c.name : 'Unnamed cost').slice(0, 200),
-    serviceKey: c && c.serviceKey ? String(c.serviceKey) : null,
+    owner: c && c.owner ? String(c.owner).slice(0, 200) : '',
     category: c && categoryKeys.includes(c.category) ? c.category : 'other',
     billingType: c && billingKeys.includes(c.billingType) ? c.billingType : 'fixed_monthly',
     baseAmount: sanitizeNumber(c && c.baseAmount),
